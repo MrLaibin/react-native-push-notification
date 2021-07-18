@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.content.Context;
 import android.util.Log;
 import android.net.Uri;
+
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
@@ -32,10 +33,14 @@ import static com.dieam.reactnativepushnotification.modules.RNPushNotification.L
 
 public class RNReceivedMessageHandler {
     private FirebaseMessagingService mFirebaseMessagingService;
+    private static final String TAG = "RNReceivedMessageHandle";
 
     public RNReceivedMessageHandler(@NonNull FirebaseMessagingService service) {
         this.mFirebaseMessagingService = service;
     }
+
+    private static final String NOTIFY_TITLE_DATA_KEY = "twi_title";
+    private static final String NOTIFY_BODY_DATA_KEY = "twi_body";
 
     public void handleReceivedMessage(RemoteMessage message) {
         String from = message.getFrom();
@@ -43,32 +48,47 @@ public class RNReceivedMessageHandler {
         final Bundle bundle = new Bundle();
         // Putting it from remoteNotification first so it can be overriden if message
         // data has it
+//        if (remoteNotification != null) {
+        // ^ It's null when message is from GCM
+        RNPushNotificationConfig config = new RNPushNotificationConfig(mFirebaseMessagingService.getApplication());
+//        String from = message.getFrom();
+        Map<String, String> data = message.getData();
+        String title = data.get(NOTIFY_TITLE_DATA_KEY);
+        String body = data.get(NOTIFY_BODY_DATA_KEY);
+
+        Log.d(TAG, "From: " + from);
+        Log.d(TAG, "Body: " + body);
+//            String title = getLocalizedString(remoteNotification.getTitle(), remoteNotification.getTitleLocalizationKey(), remoteNotification.getTitleLocalizationArgs());
+//            String body = getLocalizedString(remoteNotification.getBody(), remoteNotification.getBodyLocalizationKey(), remoteNotification.getBodyLocalizationArgs());
+
+        bundle.putString("title", title);
+        bundle.putString("message", body);
         if (remoteNotification != null) {
-            // ^ It's null when message is from GCM
-            RNPushNotificationConfig config = new RNPushNotificationConfig(mFirebaseMessagingService.getApplication());  
-
-            String title = getLocalizedString(remoteNotification.getTitle(), remoteNotification.getTitleLocalizationKey(), remoteNotification.getTitleLocalizationArgs());
-            String body = getLocalizedString(remoteNotification.getBody(), remoteNotification.getBodyLocalizationKey(), remoteNotification.getBodyLocalizationArgs());
-
-            bundle.putString("title", title);
-            bundle.putString("message", body);
             bundle.putString("sound", remoteNotification.getSound());
+        }
+        if (remoteNotification != null) {
             bundle.putString("color", remoteNotification.getColor());
+        }else{
+            bundle.putString("color", "#E53935");
+        }
+        if (remoteNotification != null || remoteNotification != null) {
             bundle.putString("tag", remoteNotification.getTag());
-            
-            if(remoteNotification.getIcon() != null) {
-              bundle.putString("smallIcon", remoteNotification.getIcon());
-            } else {
-              bundle.putString("smallIcon", "ic_notification");
-            }
-            
-            if(remoteNotification.getChannelId() != null) {
-              bundle.putString("channelId", remoteNotification.getChannelId());
-            }
-            else {
-              bundle.putString("channelId", config.getNotificationDefaultChannelId());
-            }
+        } else {
+            bundle.putString("tag", "10086");
+        }
 
+        if (remoteNotification != null && remoteNotification.getIcon() != null) {
+            bundle.putString("smallIcon", remoteNotification.getIcon());
+        } else {
+            bundle.putString("smallIcon", "ic_notification");
+        }
+
+        if (remoteNotification != null && remoteNotification.getChannelId() != null) {
+            bundle.putString("channelId", remoteNotification.getChannelId());
+        } else {
+            bundle.putString("channelId", config.getNotificationDefaultChannelId());
+        }
+        if (remoteNotification != null) {
             Integer visibilty = remoteNotification.getVisibility();
             String visibilityString = "private";
 
@@ -82,45 +102,47 @@ public class RNReceivedMessageHandler {
                         break;
                 }
             }
-          
-            bundle.putString("visibility", visibilityString);
 
+            bundle.putString("visibility", visibilityString);
             Integer priority = remoteNotification.getNotificationPriority();
             String priorityString = "high";
-            
+
             if (priority != null) {
-              switch (priority) {
-                  case NotificationCompat.PRIORITY_MAX:
-                      priorityString = "max";
-                      break;
-                  case NotificationCompat.PRIORITY_LOW:
-                      priorityString = "low";
-                      break;
-                  case NotificationCompat.PRIORITY_MIN:
-                      priorityString = "min";
-                      break;
-                  case NotificationCompat.PRIORITY_DEFAULT:
-                      priorityString = "default";
-                      break;
-              }
+                switch (priority) {
+                    case NotificationCompat.PRIORITY_MAX:
+                        priorityString = "max";
+                        break;
+                    case NotificationCompat.PRIORITY_LOW:
+                        priorityString = "low";
+                        break;
+                    case NotificationCompat.PRIORITY_MIN:
+                        priorityString = "min";
+                        break;
+                    case NotificationCompat.PRIORITY_DEFAULT:
+                        priorityString = "default";
+                        break;
+                }
             }
 
             bundle.putString("priority", priorityString);
 
             Uri uri = remoteNotification.getImageUrl();
 
-            if(uri != null) {
+            if (uri != null) {
                 String imageUrl = uri.toString();
-              
+
                 bundle.putString("bigPictureUrl", imageUrl);
                 bundle.putString("largeIconUrl", imageUrl);
             }
         }
 
+
+//        }
+
         Bundle dataBundle = new Bundle();
         Map<String, String> notificationData = message.getData();
-        
-        for(Map.Entry<String, String> entry : notificationData.entrySet()) {
+
+        for (Map.Entry<String, String> entry : notificationData.entrySet()) {
             dataBundle.putString(entry.getKey(), entry.getValue());
         }
 
@@ -167,7 +189,7 @@ public class RNReceivedMessageHandler {
 
         Application applicationContext = (Application) context.getApplicationContext();
 
-        RNPushNotificationConfig config = new RNPushNotificationConfig(mFirebaseMessagingService.getApplication());  
+        RNPushNotificationConfig config = new RNPushNotificationConfig(mFirebaseMessagingService.getApplication());
         RNPushNotificationHelper pushNotificationHelper = new RNPushNotificationHelper(applicationContext);
 
         boolean isForeground = pushNotificationHelper.isApplicationInForeground();
@@ -178,9 +200,9 @@ public class RNReceivedMessageHandler {
         jsDelivery.notifyNotification(bundle);
 
         // If contentAvailable is set to true, then send out a remote fetch event
-        if (bundle.getString("contentAvailable", "false").equalsIgnoreCase("true")) {
-            jsDelivery.notifyRemoteFetch(bundle);
-        }
+//        if (bundle.getString("contentAvailable", "false").equalsIgnoreCase("true")) {
+        jsDelivery.notifyRemoteFetch(bundle);
+//        }
 
         if (config.getNotificationForeground() || !isForeground) {
             Log.v(LOG_TAG, "sendNotification: " + bundle);
@@ -190,8 +212,8 @@ public class RNReceivedMessageHandler {
     }
 
     private String getLocalizedString(String text, String locKey, String[] locArgs) {
-        if(text != null) {
-          return text;
+        if (text != null) {
+            return text;
         }
 
         Context context = mFirebaseMessagingService.getApplicationContext();
